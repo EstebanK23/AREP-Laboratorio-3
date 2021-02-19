@@ -2,8 +2,15 @@ package edu.escuelaing.arep.httpserver;
 
 import java.net.*;
 import java.io.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import org.apache.commons.io.FilenameUtils;
 
 public class HttpServer {
+
+    static PrintWriter out;
+    static BufferedReader in;
     public static void main(String[] args) throws IOException {
         ServerSocket serverSocket = null;
         try {
@@ -23,31 +30,28 @@ public class HttpServer {
                 System.err.println("Accept failed.");
                 System.exit(1);
             }
-            PrintWriter out = new PrintWriter(
+            out = new PrintWriter(
                     clientSocket.getOutputStream(), true);
-            BufferedReader in = new BufferedReader(
+            in = new BufferedReader(
                     new InputStreamReader(clientSocket.getInputStream()));
             String inputLine, outputLine;
+
+            StringBuilder stringBuilder = new StringBuilder();
+
+            Pattern pattern = Pattern.compile("GET /([^\\s]+)");
+            Matcher matcher = null;
             while ((inputLine = in.readLine()) != null) {
-                System.out.println("Recibí: " + inputLine);
+                System.out.println("Recibi: " + inputLine);
+                stringBuilder.append(inputLine);
                 if (!in.ready()) {
+                    matcher = pattern.matcher(stringBuilder.toString());
+                    if (matcher.find()) {
+                        String req = matcher.group().substring(5);
+                        Request(req,clientSocket);
+                    }
                     break;
                 }
             }
-            outputLine = "HTTP/1.1 200 OK\r\n"
-                    + "Content-Type: text/html\r\n"
-                    + "\r\n"
-                    + "<!DOCTYPE html>\n"
-                    + "<html>\n"
-                    + "<head>\n"
-                    + "<meta charset=\"UTF-8\">\n"
-                    + "<title>Title of the document</title>\n"
-                    + "</head>\n"
-                    + "<body>\n"
-                    + "<h1>Mi propio mensaje</h1>\n"
-                    + "</body>\n"
-                    + "</html>\n";
-            out.println(outputLine);
             out.close();
             in.close();
             clientSocket.close();
@@ -55,6 +59,63 @@ public class HttpServer {
         serverSocket.close();
     }
 
+
+    public static void Request(String req, Socket client)throws IOException{
+        String path = "src/main/resources/img/";
+        String extension = FilenameUtils.getExtension(req);
+        File archivo = new File(path+req);
+
+        try{
+            if (extension.equals("jpg") || extension.equals("png")) {
+                try {
+                    FileInputStream fis = new FileInputStream(archivo);
+                    byte[] data = new byte[(int) archivo.length()];
+                    fis.read(data);
+                    fis.close();
+                    DataOutputStream binaryOut = new DataOutputStream(client.getOutputStream());
+                    binaryOut.writeBytes("HTTP/1.0 200 OK\r\n");
+                    binaryOut.writeBytes("Content-Type: image/"+extension+"\r\n");
+                    binaryOut.writeBytes("Content-Length: " + data.length);
+                    binaryOut.writeBytes("\r\n\r\n");
+                    binaryOut.write(data);
+                    binaryOut.close();
+
+                }  catch (FileNotFoundException e){
+                    out = new PrintWriter(client.getOutputStream(), true);
+                    out.println("HTTP/1.1 200 \r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text/html\r\n\r\n" +
+                            "<html>" +
+                            "<head>" +
+                            "<title>404</title>" +
+                            "</head>" +
+                            "<body>" +
+                            "<h1>Error 404 Not Found</h1>" +
+                            "</body>" +
+                            "</html>");
+                }
+            } else {
+                out.println("HTTP/1.1 200 OK \r\nContent-Type: text/html\r\n\r\n");
+                BufferedReader br = new BufferedReader(new FileReader(archivo));
+                StringBuilder stringBuilder = new StringBuilder();
+                String string;
+                while ((string= br.readLine()) != null) {
+                    stringBuilder.append(string);
+                }
+                out.println(stringBuilder.toString());
+                br.close();
+            }
+        } catch (FileNotFoundException e){
+            out = new PrintWriter(client.getOutputStream(), true);
+            out.println("HTTP/1.1 200 \r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text/html\r\n\r\n" +
+                    "<html>" +
+                    "<head>" +
+                    "<title>404</title>" +
+                    "</head>" +
+                    "<body>" +
+                    "<h1>Error 404 Not Found</h1>" +
+                    "</body>" +
+                    "</html>");
+        }
+    }
     private static int getport() {
         if (System.getenv("PORT") != null) {
             return Integer.parseInt(System.getenv("PORT"));
