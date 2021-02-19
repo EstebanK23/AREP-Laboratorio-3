@@ -7,10 +7,18 @@ import java.util.regex.Pattern;
 
 import org.apache.commons.io.FilenameUtils;
 
+/**
+ *
+ * @author Esteban Bernal
+ */
 public class HttpServer {
 
     static PrintWriter out;
     static BufferedReader in;
+    /**
+     * Metedo main que utilizaremos implementar el servicio http
+     * @param args argumentos de la clase main
+     **/
     public static void main(String[] args) throws IOException {
         ServerSocket serverSocket = null;
         try {
@@ -59,13 +67,17 @@ public class HttpServer {
         serverSocket.close();
     }
 
-
-    public static void Request(String req, Socket client)throws IOException{
+    /**
+     * Metedo Request se encarga de ejecutar la petición que esta solicitando ver el cliente.
+     * @param req cadena req(solicitud)
+     * @param client socket que se encarga del response al cliente
+     **/
+    public static void Request(String req, Socket client)throws IOException {
         String path = "src/main/resources/img/";
         String extension = FilenameUtils.getExtension(req);
-        File archivo = new File(path+req);
+        File archivo = new File(path + req);
 
-        try{
+        try {
             if (extension.equals("jpg") || extension.equals("png")) {
                 try {
                     FileInputStream fis = new FileInputStream(archivo);
@@ -74,13 +86,13 @@ public class HttpServer {
                     fis.close();
                     DataOutputStream binaryOut = new DataOutputStream(client.getOutputStream());
                     binaryOut.writeBytes("HTTP/1.0 200 OK\r\n");
-                    binaryOut.writeBytes("Content-Type: image/"+extension+"\r\n");
+                    binaryOut.writeBytes("Content-Type: image/" + extension + "\r\n");
                     binaryOut.writeBytes("Content-Length: " + data.length);
                     binaryOut.writeBytes("\r\n\r\n");
                     binaryOut.write(data);
                     binaryOut.close();
 
-                }  catch (FileNotFoundException e){
+                } catch (FileNotFoundException e) {
                     out = new PrintWriter(client.getOutputStream(), true);
                     out.println("HTTP/1.1 200 \r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text/html\r\n\r\n" +
                             "<html>" +
@@ -97,13 +109,13 @@ public class HttpServer {
                 BufferedReader br = new BufferedReader(new FileReader(archivo));
                 StringBuilder stringBuilder = new StringBuilder();
                 String string;
-                while ((string= br.readLine()) != null) {
+                while ((string = br.readLine()) != null) {
                     stringBuilder.append(string);
                 }
                 out.println(stringBuilder.toString());
                 br.close();
             }
-        } catch (FileNotFoundException e){
+        } catch (FileNotFoundException e) {
             out = new PrintWriter(client.getOutputStream(), true);
             out.println("HTTP/1.1 200 \r\nAccess-Control-Allow-Origin: *\r\nContent-Type: text/html\r\n\r\n" +
                     "<html>" +
@@ -116,6 +128,11 @@ public class HttpServer {
                     "</html>");
         }
     }
+
+    /**
+     * Metedo getPort se encarga de obtener el puerto para ejecutar localmente.
+     * @return 36000 Puerto para ejecutar localmente
+     **/
     private static int getport() {
         if (System.getenv("PORT") != null) {
             return Integer.parseInt(System.getenv("PORT"));
